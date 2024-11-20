@@ -31,6 +31,7 @@ model User {
   activities      Activity[]
   notifications   Notification[]
   supportTickets  SupportTicket[]
+  analyticsEvents AnalyticsEvent[]
 }
 
 model TaxReturn {
@@ -166,4 +167,69 @@ model FeatureFlagChangeLog {
   oldValue     Boolean
   newValue     Boolean
   changedAt    DateTime @default(now())
+}
+
+// Tax Knowledge Base Models
+model TaxRule {
+  id            String         @id @default(cuid())
+  category      String
+  description   String
+  applicability String[]
+  exceptions    TaxException[]
+  citations     Citation[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model TaxException {
+  id          String   @id @default(cuid())
+  description String
+  taxRule     TaxRule  @relation(fields: [taxRuleId], references: [id])
+  taxRuleId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Citation {
+  id          String   @id @default(cuid())
+  reference   String
+  taxRule     TaxRule  @relation(fields: [taxRuleId], references: [id])
+  taxRuleId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TaxGuidance {
+  id          String   @id @default(cuid())
+  topic       String
+  guidance    String   @db.Text
+  lastUpdated DateTime
+  source      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Analytics Models
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String
+  metadata  Json
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// State Tax Models
+model StateTaxInfo {
+  id                   String   @id @default(cuid())
+  state                String   @unique
+  incomeTaxRates      Json     // Array of tax brackets and rates
+  salesTax            Float
+  propertyTax         Float
+  specialDeductions   Json     // Array of special deductions
+  filingDeadlines     String
+  reciprocityStates   String[]
+  lastUpdated         DateTime
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
