@@ -1,0 +1,169 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  hashedPassword  String
+  firstName       String?
+  lastName        String?
+  role            String    @default("USER")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastLoginAt     DateTime?
+  stripeCustomerId String?
+  subscriptionStatus String @default("TRIAL")
+  trialEndDate    DateTime?
+  twoFactorEnabled Boolean  @default(false)
+  totpSecret      String?
+  referralCode    String?   @unique
+  referralCount   Int       @default(0)
+  referralDiscount Int      @default(0)
+  referredBy      String?
+  taxReturns      TaxReturn[]
+  documents       Document[]
+  activities      Activity[]
+  notifications   Notification[]
+  supportTickets  SupportTicket[]
+}
+
+model TaxReturn {
+  id             String    @id @default(uuid())
+  year           Int
+  status         String    @default("DRAFT")
+  userId         String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  calculatedTax  Float?
+  estimatedRefund Float?
+  documents      Document[]
+  income         Income?
+  deductions     Deductions?
+  taxCredits     TaxCredits?
+  user           User      @relation(fields: [userId], references: [id])
+}
+
+model Income {
+  id          String    @id @default(uuid())
+  wages       Float     @default(0)
+  interest    Float     @default(0)
+  dividends   Float     @default(0)
+  otherIncome Float     @default(0)
+  taxReturnId String    @unique
+  taxReturn   TaxReturn @relation(fields: [taxReturnId], references: [id])
+}
+
+model Deductions {
+  id                String    @id @default(uuid())
+  standardDeduction Float     @default(0)
+  itemizedDeductions Float    @default(0)
+  otherDeductions   Float     @default(0)
+  taxReturnId       String    @unique
+  taxReturn         TaxReturn @relation(fields: [taxReturnId], references: [id])
+}
+
+model TaxCredits {
+  id                String    @id @default(uuid())
+  childTaxCredit    Float     @default(0)
+  earnedIncomeCredit Float    @default(0)
+  otherCredits      Float     @default(0)
+  taxReturnId       String    @unique
+  taxReturn         TaxReturn @relation(fields: [taxReturnId], references: [id])
+}
+
+model Document {
+  id          String    @id @default(uuid())
+  fileName    String
+  fileType    String
+  fileUrl     String
+  userId      String
+  taxReturnId String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id])
+  taxReturn   TaxReturn? @relation(fields: [taxReturnId], references: [id])
+}
+
+model Activity {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model SupportTicket {
+  id        String   @id @default(uuid())
+  userId    String
+  subject   String
+  message   String
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model TaxDeadline {
+  id        String   @id @default(uuid())
+  title     String
+  date      DateTime
+  createdAt DateTime @default(now())
+}
+
+model TaxLibraryArticle {
+  id          String   @id @default(uuid())
+  title       String
+  summary     String
+  content     String   @db.Text
+  source      String
+  url         String
+  category    String
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model UserSubmittedArticle {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  content   String   @db.Text
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  category    String   @default("Uncategorized")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  changedBy   String?
+}
+
+model FeatureFlagChangeLog {
+  id           String   @id @default(uuid())
+  featureFlagId String
+  changedBy    String
+  oldValue     Boolean
+  newValue     Boolean
+  changedAt    DateTime @default(now())
+}
