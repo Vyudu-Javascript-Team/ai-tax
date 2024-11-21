@@ -1,0 +1,17 @@
+// Previous schema content remains the same until Document model
+
+model Document {
+  id          String    @id @default(uuid())
+  fileName    String
+  fileType    String
+  fileUrl     String
+  userId      String
+  taxReturnId String?
+  metadata    Json?     // Adding metadata field to store extracted info
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id])
+  taxReturn   TaxReturn? @relation(fields: [taxReturnId], references: [id])
+}
+
+// Rest of the schema remains the same

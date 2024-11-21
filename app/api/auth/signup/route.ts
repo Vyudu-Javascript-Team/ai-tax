@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
-    const { name, companyName, phoneNumber, email, password, plan, referralCode } = await request.json();
+    const { firstName, lastName, companyName, phoneNumber, email, password, plan, referralCode } = await request.json();
 
     const existingUser = await prisma.user.findUnique({
       where: { email },
@@ -29,7 +29,8 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.create({
       data: {
-        name,
+        firstName,
+        lastName,
         companyName,
         phoneNumber,
         email,
@@ -38,6 +39,8 @@ export async function POST(request: Request) {
         trialEndDate,
         referralCode: uuidv4(),
         referredBy: referrer ? referrer.id : null,
+        role: 'USER',
+        subscriptionStatus: 'TRIAL',
       },
     });
 
@@ -51,15 +54,19 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ 
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        referralCode: user.referralCode 
-      } 
+    return NextResponse.json({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      companyName: user.companyName,
+      plan: user.plan,
     });
   } catch (error) {
-    console.error("Registration error:", error);
-    return NextResponse.json({ error: "An error occurred during registration" }, { status: 500 });
+    console.error('Signup error:', error);
+    return NextResponse.json(
+      { error: "Error creating user" },
+      { status: 500 }
+    );
   }
 }

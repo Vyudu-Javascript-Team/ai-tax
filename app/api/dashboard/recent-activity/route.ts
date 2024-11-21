@@ -1,9 +1,31 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../auth/[...nextauth]/route";
 
 const prisma = new PrismaClient();
+
+type ActivityWithUser = Prisma.ActivityGetPayload<{
+  include: {
+    user: {
+      select: {
+        firstName: true;
+        lastName: true;
+        email: true;
+      };
+    };
+  };
+}>;
+
+interface FormattedActivity {
+  id: string;
+  user: {
+    name: string;
+    email: string;
+  };
+  action: string;
+  date: string;
+}
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -20,17 +42,20 @@ export async function GET() {
       include: {
         user: {
           select: {
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
       },
     });
 
-    const formattedActivities = recentActivities.map((activity) => ({
+    const formattedActivities: FormattedActivity[] = recentActivities.map((activity: ActivityWithUser) => ({
       id: activity.id,
       user: {
-        name: activity.user.name,
+        name: activity.user.firstName && activity.user.lastName
+          ? `${activity.user.firstName} ${activity.user.lastName}`
+          : 'Unknown User',
         email: activity.user.email,
       },
       action: activity.action,

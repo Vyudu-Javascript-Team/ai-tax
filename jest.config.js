@@ -24,20 +24,52 @@ const customJestConfig = {
   },
   testMatch: [
     '**/__tests__/**/*.test.[jt]s?(x)',
+    '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
   collectCoverage: true,
   coverageDirectory: '<rootDir>/coverage',
-  coverageReporters: ['json', 'lcov', 'text', 'clover', 'cobertura'],
+  coverageReporters: [
+    'json',
+    'lcov',
+    'text',
+    'clover',
+    'cobertura',
+    ['jest-junit', {
+      outputDirectory: 'coverage',
+      outputName: 'junit.xml',
+      classNameTemplate: '{classname}',
+      titleTemplate: '{title}',
+      ancestorSeparator: ' › ',
+      usePathForSuiteName: true,
+    }],
+  ],
+  reporters: [
+    'default',
+    ['jest-junit', {
+      outputDirectory: 'coverage',
+      outputName: 'junit.xml',
+      classNameTemplate: '{classname}',
+      titleTemplate: '{title}',
+      ancestorSeparator: ' › ',
+      usePathForSuiteName: true,
+    }],
+  ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',
     'lib/**/*.{js,jsx,ts,tsx}',
+    'utils/**/*.{js,jsx,ts,tsx}',
+    'hooks/**/*.{js,jsx,ts,tsx}',
+    'contexts/**/*.{js,jsx,ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
     '!**/.next/**',
     '!**/coverage/**',
     '!**/jest.config.js',
     '!**/jest.setup.js',
+    '!**/*.stories.{js,jsx,ts,tsx}',
+    '!**/__mocks__/**',
+    '!**/__tests__/helpers/**',
   ],
   coverageThreshold: {
     global: {
@@ -51,39 +83,19 @@ const customJestConfig = {
     '<rootDir>/node_modules/',
     '<rootDir>/.next/',
     '<rootDir>/coverage/',
+    '<rootDir>/__mocks__/',
+    '<rootDir>/__tests__/helpers/',
   ],
-  transformIgnorePatterns: [
-    '/node_modules/(?!(jose|@panva|oidc-token-hash|openid-client|@tanstack/react-query|@radix-ui|class-variance-authority|next-auth|@stripe|@babel/runtime|uuid)/)',
-  ],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node', 'mjs'],
   transform: {
-    '^.+\\.(js|jsx|ts|tsx|mjs)$': ['babel-jest', { 
-      presets: [
-        ['@babel/preset-env', { targets: { node: 'current' }, modules: 'commonjs' }],
-        '@babel/preset-react',
-        '@babel/preset-typescript'
-      ],
-      plugins: ['@babel/plugin-transform-modules-commonjs']
-    }],
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
   },
-  extensionsToTreatAsEsm: ['.ts', '.tsx'],
-  globals: {
-    'ts-jest': {
-      useESM: true,
-    },
-    jest: true,
-    expect: true,
-    test: true,
-    describe: true,
-    beforeEach: true,
-    afterEach: true,
-  },
+  transformIgnorePatterns: [
+    '/node_modules/',
+    '^.+\\.module\\.(css|sass|scss)$',
+  ],
   moduleDirectories: ['node_modules', '<rootDir>'],
-  setupFiles: ['<rootDir>/jest.setup.js'],
-  testEnvironmentOptions: {
-    url: 'http://localhost:3000',
-  },
-  injectGlobals: true,
+  testTimeout: 10000,
+  verbose: true,
 };
 
 module.exports = createJestConfig(customJestConfig);
