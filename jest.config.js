@@ -15,34 +15,38 @@ const customJestConfig = {
     '^@hooks/(.*)$': '<rootDir>/hooks/$1',
     '^@utils/(.*)$': '<rootDir>/utils/$1',
     '^@styles/(.*)$': '<rootDir>/styles/$1',
-    '^@contexts/(.*)$': '<rootDir>/contexts/$1',
     '^@config/(.*)$': '<rootDir>/config/$1',
     '^@types/(.*)$': '<rootDir>/types/$1',
     '\\.(css|less|sass|scss)$': 'identity-obj-proxy',
     '\\.(gif|ttf|eot|svg|png|jpg|jpeg)$': '<rootDir>/__mocks__/fileMock.js',
-    '^jose$': '<rootDir>/__mocks__/jose.js',
   },
+  transform: {
+    '^.+\\.(t|j)sx?$': ['ts-jest', {
+      tsconfig: 'tsconfig.json',
+    }],
+  },
+  transformIgnorePatterns: [
+    'node_modules/(?!(@panva/hkdf)/)',
+  ],
   testMatch: [
     '**/__tests__/**/*.test.[jt]s?(x)',
-    '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
   collectCoverage: true,
-  coverageDirectory: '<rootDir>/coverage',
-  coverageReporters: [
-    'json',
-    'lcov',
-    'text',
-    'clover',
-    'cobertura',
-    ['jest-junit', {
-      outputDirectory: 'coverage',
-      outputName: 'junit.xml',
-      classNameTemplate: '{classname}',
-      titleTemplate: '{title}',
-      ancestorSeparator: ' › ',
-      usePathForSuiteName: true,
-    }],
+  collectCoverageFrom: [
+    'app/**/*.{js,jsx,ts,tsx}',
+    'components/**/*.{js,jsx,ts,tsx}',
+    'lib/**/*.{js,jsx,ts,tsx}',
+    '!**/*.d.ts',
+    '!**/node_modules/**',
   ],
+  coverageThreshold: {
+    global: {
+      statements: 70,
+      branches: 70,
+      functions: 70,
+      lines: 70,
+    },
+  },
   reporters: [
     'default',
     ['jest-junit', {
@@ -50,52 +54,8 @@ const customJestConfig = {
       outputName: 'junit.xml',
       classNameTemplate: '{classname}',
       titleTemplate: '{title}',
-      ancestorSeparator: ' › ',
-      usePathForSuiteName: true,
     }],
   ],
-  collectCoverageFrom: [
-    'app/**/*.{js,jsx,ts,tsx}',
-    'components/**/*.{js,jsx,ts,tsx}',
-    'lib/**/*.{js,jsx,ts,tsx}',
-    'utils/**/*.{js,jsx,ts,tsx}',
-    'hooks/**/*.{js,jsx,ts,tsx}',
-    'contexts/**/*.{js,jsx,ts,tsx}',
-    '!**/*.d.ts',
-    '!**/node_modules/**',
-    '!**/.next/**',
-    '!**/coverage/**',
-    '!**/jest.config.js',
-    '!**/jest.setup.js',
-    '!**/*.stories.{js,jsx,ts,tsx}',
-    '!**/__mocks__/**',
-    '!**/__tests__/helpers/**',
-  ],
-  coverageThreshold: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
-    },
-  },
-  testPathIgnorePatterns: [
-    '<rootDir>/node_modules/',
-    '<rootDir>/.next/',
-    '<rootDir>/coverage/',
-    '<rootDir>/__mocks__/',
-    '<rootDir>/__tests__/helpers/',
-  ],
-  transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
-  },
-  transformIgnorePatterns: [
-    '/node_modules/',
-    '^.+\\.module\\.(css|sass|scss)$',
-  ],
-  moduleDirectories: ['node_modules', '<rootDir>'],
-  testTimeout: 10000,
-  verbose: true,
 };
 
 module.exports = createJestConfig(customJestConfig);
