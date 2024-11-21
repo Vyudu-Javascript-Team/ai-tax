@@ -1,4 +1,6 @@
+// Import necessary testing utilities
 import '@testing-library/jest-dom';
+import { TextEncoder, TextDecoder } from 'util';
 
 // Mock environment variables
 process.env = {
@@ -12,6 +14,89 @@ process.env = {
   NEXTAUTH_SECRET: 'test_secret',
   ENCRYPTION_KEY: 'test_encryption_key',
 };
+
+// Mock TextEncoder/TextDecoder
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
+// Mock window.matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
+// Mock IntersectionObserver
+const mockIntersectionObserver = jest.fn();
+mockIntersectionObserver.mockReturnValue({
+  observe: () => null,
+  unobserve: () => null,
+  disconnect: () => null,
+});
+window.IntersectionObserver = mockIntersectionObserver;
+
+// Mock ResizeObserver
+window.ResizeObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+}));
+
+// Mock fetch
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({}),
+  })
+);
+
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter() {
+    return {
+      push: jest.fn(),
+      replace: jest.fn(),
+      prefetch: jest.fn(),
+      back: jest.fn(),
+      forward: jest.fn(),
+    };
+  },
+  useSearchParams() {
+    return {
+      get: jest.fn(),
+      getAll: jest.fn(),
+      has: jest.fn(),
+      forEach: jest.fn(),
+    };
+  },
+  usePathname() {
+    return '/';
+  },
+}));
+
+// Mock next-auth
+jest.mock('next-auth/react', () => ({
+  useSession: jest.fn(() => ({
+    data: null,
+    status: 'unauthenticated',
+  })),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  getSession: jest.fn(() => null),
+}));
+
+// Mock next-auth/jwt
+jest.mock('next-auth/jwt', () => ({
+  getToken: jest.fn(() => null),
+}));
 
 // Mock next/router
 jest.mock('next/router', () => ({
@@ -37,68 +122,20 @@ jest.mock('next/router', () => ({
   },
 }));
 
-// Mock next-auth
-jest.mock('next-auth/react', () => ({
-  useSession: jest.fn(() => ({
-    data: null,
-    status: 'unauthenticated',
-    update: jest.fn(),
-  })),
-  signIn: jest.fn(),
-  signOut: jest.fn(),
-  getSession: jest.fn(),
-}));
-
 // Mock Stripe
 jest.mock('@stripe/stripe-js', () => ({
   loadStripe: jest.fn(() => Promise.resolve({})),
 }));
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
-// Mock ResizeObserver
-global.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
-
-// Mock fetch
-global.fetch = jest.fn(() =>
-  Promise.resolve({
-    ok: true,
-    json: () => Promise.resolve({}),
-  })
-);
-
-// Mock next/navigation
-jest.mock('next/navigation', () => ({
-  useRouter() {
-    return {
-      push: jest.fn(),
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-    };
-  },
-  useSearchParams() {
-    return {
-      get: jest.fn(),
-    };
-  },
-}));
-
 // Suppress console errors during tests
-console.error = jest.fn();
+const originalError = console.error;
+console.error = (...args) => {
+  if (
+    typeof args[0] === 'string' &&
+    (args[0].includes('Warning: ReactDOM.render is no longer supported') ||
+      args[0].includes('Error: Uncaught [Error: expected `content` prop'))
+  ) {
+    return;
+  }
+  originalError.call(console, ...args);
+};

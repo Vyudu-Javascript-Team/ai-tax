@@ -17,8 +17,8 @@ describe('Test Environment Setup', () => {
     expect(process.env.NEXTAUTH_SECRET).toBeDefined();
   });
 
-  it('should have mocked next/router', () => {
-    const { useRouter } = require('next/router');
+  it('should have mocked next/navigation', () => {
+    const { useRouter } = require('next/navigation');
     const router = useRouter();
     expect(router.push).toBeDefined();
     expect(typeof router.push).toBe('function');

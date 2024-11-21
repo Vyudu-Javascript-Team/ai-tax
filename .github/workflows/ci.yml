@@ -10,11 +10,11 @@ env:
   NODE_ENV: test
   NEXTAUTH_URL: http://localhost:3000
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_tax_prep_test
-  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-  STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+  NEXTAUTH_SECRET: test-secret
+  STRIPE_SECRET_KEY: sk_test_dummy
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
+  OPENAI_API_KEY: sk-test-dummy
+  ENCRYPTION_KEY: test-encryption-key
 
 jobs:
   build:
@@ -47,14 +47,13 @@ jobs:
       uses: actions/cache@v3
       with:
         path: node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package.json') }}
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
         
     - name: Install dependencies
       run: |
-        npm install --no-package-lock --verbose
-        npm install -g jest@latest
+        npm install
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         
@@ -68,13 +67,6 @@ jobs:
       run: |
         echo "Node version: $(node -v)"
         echo "NPM version: $(npm -v)"
-        echo "Checking required environment variables..."
-        [[ -z "${NEXTAUTH_URL}" ]] && echo "NEXTAUTH_URL is missing" || echo "NEXTAUTH_URL is set"
-        [[ -z "${DATABASE_URL}" ]] && echo "DATABASE_URL is missing" || echo "DATABASE_URL is set"
-        [[ -z "${NEXTAUTH_SECRET}" ]] && echo "NEXTAUTH_SECRET is missing" || echo "NEXTAUTH_SECRET is set"
-        [[ -z "${STRIPE_SECRET_KEY}" ]] && echo "STRIPE_SECRET_KEY is missing" || echo "STRIPE_SECRET_KEY is set"
-        [[ -z "${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}" ]] && echo "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is missing" || echo "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is set"
-        [[ -z "${OPENAI_API_KEY}" ]] && echo "OPENAI_API_KEY is missing" || echo "OPENAI_API_KEY is set"
         echo "Checking PostgreSQL connection..."
         nc -zv localhost 5432 || echo "Cannot connect to PostgreSQL"
         
@@ -82,31 +74,23 @@ jobs:
       run: npx tsc --noEmit
         
     - name: Build application
-      run: |
-        echo "Starting build process..."
-        npm run build --verbose
+      run: npm run build
       env:
         NODE_OPTIONS: --max-old-space-size=4096
-        DEBUG: '*'
         
     - name: Run tests
-      run: |
-        echo "Starting tests..."
-        npm run test:ci --verbose
+      run: npm run test:ci
       env:
         NODE_OPTIONS: --max-old-space-size=4096
-        DEBUG: '*'
-      continue-on-error: true
 
     - name: Upload test results
-      if: always()
       uses: actions/upload-artifact@v3
+      if: always()
       with:
         name: test-results
         path: |
           coverage/
           junit.xml
-        retention-days: 30
 
   deploy:
     needs: build
