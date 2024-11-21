@@ -26,4 +26,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: "Article submitted successfully", articleId: article.id });
   } catch (error) {
     console.error('Error submitting article:', error);
-    return Next
+    return NextResponse.json({ error: "Failed to submit article" }, { status: 500 });
+  }
+}
