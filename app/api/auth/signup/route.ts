@@ -1,69 +1,66 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
-import { v4 as uuidv4 } from 'uuid';
+import { hash } from "bcryptjs";
+import { prisma } from "@/lib/prisma";
+import { SignupRequest, SignupResponse } from "@/types/api";
 
-const prisma = new PrismaClient();
-
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { firstName, lastName, companyName, phoneNumber, email, password, plan, referralCode } = await request.json();
+    const data: SignupRequest = await req.json();
 
+    const { email, password, firstName, lastName, companyName, plan } = data;
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: "Email and password are required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
-      return NextResponse.json({ error: "User already exists" }, { status: 400 });
+      return NextResponse.json(
+        { error: "User already exists" },
+        { status: 400 }
+      );
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const trialEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+    const hashedPassword = await hash(password, 10);
 
-    let referrer = null;
-    if (referralCode) {
-      referrer = await prisma.user.findUnique({
-        where: { referralCode },
-      });
-    }
-
+    // Create user with extended fields
     const user = await prisma.user.create({
       data: {
+        email,
+        hashedPassword,
         firstName,
         lastName,
         companyName,
-        phoneNumber,
-        email,
-        hashedPassword,
+        phoneNumber: data.phoneNumber,
         plan,
-        trialEndDate,
-        referralCode: uuidv4(),
-        referredBy: referrer ? referrer.id : null,
-        role: 'USER',
-        subscriptionStatus: 'TRIAL',
+        role: "USER",
+        subscriptionStatus: "TRIAL",
+        trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days trial
+        referralCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
       },
     });
 
-    if (referrer) {
-      await prisma.user.update({
-        where: { id: referrer.id },
-        data: {
-          referralCount: { increment: 1 },
-          referralDiscount: { increment: 10 },
-        },
-      });
-    }
+    // Remove sensitive data before sending response
+    const { hashedPassword: _, ...userWithoutPassword } = user;
 
-    return NextResponse.json({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      companyName: user.companyName,
-      plan: user.plan,
-    });
+    const response: SignupResponse = {
+      user: {
+        ...userWithoutPassword,
+        role: userWithoutPassword.role as "USER" | "ADMIN" | "ACCOUNTANT",
+      },
+      message: "User created successfully",
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error("Signup error:", error);
     return NextResponse.json(
       { error: "Error creating user" },
       { status: 500 }

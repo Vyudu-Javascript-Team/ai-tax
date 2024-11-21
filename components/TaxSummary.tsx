@@ -1,66 +1,55 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { FileText, Clock, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign } from "lucide-react";
 
-export function TaxSummary() {
-  const [summary, setSummary] = useState({ totalReturns: 0, inProgressReturns: 0, submittedReturns: 0, estimatedRefund: 0 });
+interface TaxSummaryProps {
+  totalTax: number
+  totalDeductions: number
+  totalCredits: number
+  status: string
+}
 
-  useEffect(() => {
-    const fetchSummary = async () => {
-      try {
-        const response = await fetch('/api/dashboard/summary');
-        if (response.ok) {
-          const data = await response.json();
-          setSummary(data);
-        }
-      } catch (error) {
-        console.error('Error fetching tax summary:', error);
-      }
-    };
-
-    fetchSummary();
-  }, []);
-
+export function TaxSummary({
+  totalTax,
+  totalDeductions,
+  totalCredits,
+  status,
+}: TaxSummaryProps) {
   return (
-    <>
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Returns</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            Total Tax
+          </CardTitle>
           <FileText className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{summary.totalReturns}</div>
+          <div className="text-2xl font-bold">${totalTax.toFixed(2)}</div>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            Processing Time
+          </CardTitle>
           <Clock className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{summary.inProgressReturns}</div>
+          <div className="text-2xl font-bold">24h</div>
         </CardContent>
       </Card>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Submitted</CardTitle>
+          <CardTitle className="text-sm font-medium">Status</CardTitle>
           <CheckCircle className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{summary.submittedReturns}</div>
+          <div className="text-2xl font-bold">{status}</div>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Estimated Refund</CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">${summary.estimatedRefund.toFixed(2)}</div>
-        </CardContent>
-      </Card>
-    </>
-  );
+    </div>
+  )
 }

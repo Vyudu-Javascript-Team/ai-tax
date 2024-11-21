@@ -1,10 +1,9 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
-
-const prisma = new PrismaClient();
+import { Role } from "@/types/api";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -51,7 +50,7 @@ export const authOptions: NextAuthOptions = {
           name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : null,
           firstName: user.firstName,
           lastName: user.lastName,
-          role: user.role,
+          role: user.role as Role,
         };
       },
     }),
@@ -68,7 +67,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = user.role;
+        token.role = user.role as Role;
         token.firstName = user.firstName;
         token.lastName = user.lastName;
       }
@@ -76,10 +75,10 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.firstName = token.firstName;
-        session.user.lastName = token.lastName;
+        session.user.id = token.id as string;
+        session.user.role = token.role as Role;
+        session.user.firstName = token.firstName as string | null;
+        session.user.lastName = token.lastName as string | null;
       }
       return session;
     },
@@ -89,3 +88,34 @@ export const authOptions: NextAuthOptions = {
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
+
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      email: string;
+      name?: string | null;
+      role: Role;
+      firstName?: string | null;
+      lastName?: string | null;
+    }
+  }
+
+  interface User {
+    id: string;
+    email: string;
+    name?: string | null;
+    role: Role;
+    firstName?: string | null;
+    lastName?: string | null;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    role: Role;
+    firstName?: string | null;
+    lastName?: string | null;
+  }
+}

@@ -11,6 +11,18 @@ interface ExtractedFormData {
   fields: Record<string, string | number>;
 }
 
+interface DocumentMetadata {
+  extractedText: string;
+  taxInfo: {
+    formType: string;
+    year: number;
+    fields: Record<string, string | number>;
+  };
+  processedAt: string;
+  fileSize: number;
+  processingStatus: string;
+}
+
 export class DocumentProcessingService {
   private static instance: DocumentProcessingService;
   private apiManager: ApiIntegrationManager;
@@ -268,5 +280,37 @@ export class DocumentProcessingService {
       console.error('Error saving processed document:', error);
       throw error;
     }
+  }
+}
+
+export async function extractDocumentMetadata(file: File): Promise<DocumentMetadata> {
+  const service = DocumentProcessingService.getInstance();
+  const buffer = await file.arrayBuffer();
+  
+  try {
+    const extractedData = await service.processDocument(
+      Buffer.from(buffer),
+      file.name,
+      'temp-user-id' // This will be replaced with actual user ID in the route
+    );
+
+    return {
+      extractedText: extractedData.fields.rawText as string,
+      taxInfo: {
+        formType: extractedData.formType,
+        year: extractedData.year,
+        fields: extractedData.fields
+      },
+      processedAt: new Date().toISOString(),
+      fileSize: buffer.byteLength,
+      processingStatus: 'completed'
+    };
+  } catch (error) {
+    console.error('Error extracting metadata:', error);
+    return {
+      processedAt: new Date().toISOString(),
+      fileSize: buffer.byteLength,
+      processingStatus: 'failed'
+    };
   }
 }

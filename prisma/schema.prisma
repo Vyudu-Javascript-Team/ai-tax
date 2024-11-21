@@ -8,32 +8,39 @@ generator client {
 }
 
 model User {
-  id              String    @id @default(uuid())
-  email           String    @unique
-  hashedPassword  String
-  firstName       String?
-  lastName        String?
-  role            String    @default("USER")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  lastLoginAt     DateTime?
-  stripeCustomerId String?
-  subscriptionStatus String @default("TRIAL")
-  trialEndDate    DateTime?
-  twoFactorEnabled Boolean  @default(false)
-  totpSecret      String?
-  referralCode    String?   @unique
-  referralCount   Int       @default(0)
-  referralDiscount Int      @default(0)
-  referredBy      String?
-  taxReturns      TaxReturn[]
-  documents       Document[]
-  activities      Activity[]
-  notifications   Notification[]
-  supportTickets  SupportTicket[]
-  analyticsEvents AnalyticsEvent[]
-  securityLogs    SecurityLog[]
-  achievements    Achievement[]
+  id                String    @id @default(uuid())
+  email             String    @unique
+  hashedPassword    String
+  firstName         String?
+  lastName          String?
+  role             String    @default("USER")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  lastLoginAt      DateTime?
+  stripeCustomerId String?   @unique
+  subscriptionStatus String  @default("TRIAL")
+  subscriptionEndDate DateTime?
+  trialEndDate     DateTime?
+  twoFactorEnabled Boolean   @default(false)
+  totpSecret       String?
+  referralCode     String?   @unique
+  referralCount    Int       @default(0)
+  referralDiscount Int       @default(0)
+  referredBy       String?
+  companyName      String?
+  plan             String?
+  tenant           String?
+  taxReturns       TaxReturn[]
+  documents        Document[]
+  activities       Activity[]
+  notifications    Notification[]
+  supportTickets   SupportTicket[]
+  analyticsEvents  AnalyticsEvent[]
+  securityLogs     SecurityLog[]
+  achievements     Achievement[]
+  teamMembers      TeamMember[]
+  payments         Payment[]
+  plaidConnections PlaidConnection[]
 }
 
 model TaxReturn {
@@ -87,10 +94,41 @@ model Document {
   fileUrl     String
   userId      String
   taxReturnId String?
+  metadata    Json?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   user        User      @relation(fields: [userId], references: [id])
   taxReturn   TaxReturn? @relation(fields: [taxReturnId], references: [id])
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  userId    String
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  userId      String
+  amount      Float
+  status      String
+  stripeId    String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model PlaidConnection {
+  id            String   @id @default(uuid())
+  userId        String
+  accessToken   String
+  itemId        String
+  institutionId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id])
 }
 
 model Activity {

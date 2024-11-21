@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
-import { createWorker } from 'tesseract.js';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "../auth/[...nextauth]/route";
-import { PrismaClient } from "@prisma/client";
-import { extractTaxInfo } from "@/lib/tax-document-parser";
-
-const prisma = new PrismaClient();
+import { getToken } from "next-auth/jwt";
+import { prisma } from "@/lib/prisma";
+import { DocumentWithMetadata } from "@/types/api";
+import { extractDocumentMetadata } from "@/lib/services/DocumentProcessingService";
 
 // Supported file types for OCR
 const SUPPORTED_FILE_TYPES = [
@@ -15,68 +12,71 @@ const SUPPORTED_FILE_TYPES = [
   'application/pdf',
 ];
 
-export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const data = await request.formData();
-  const file: File | null = data.get('file') as unknown as File;
-  const taxReturnId = data.get('taxReturnId') as string;
-
-  if (!file) {
-    return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
-  }
-
-  if (!SUPPORTED_FILE_TYPES.includes(file.type)) {
-    return NextResponse.json({ 
-      error: "Unsupported file type. Please upload a JPEG, PNG, TIFF, or PDF file." 
-    }, { status: 400 });
-  }
-
+export async function POST(req: Request) {
   try {
-    const buffer = await file.arrayBuffer();
-    const base64Data = Buffer.from(buffer).toString('base64');
-    const mimeType = file.type;
-    const dataUrl = `data:${mimeType};base64,${base64Data}`;
+    const token = await getToken({ req });
 
-    const worker = await createWorker('eng');
-    const { data: { text } } = await worker.recognize(dataUrl);
-    await worker.terminate();
+    if (!token) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
-    // Extract tax information from the OCR text
-    const taxInfo = extractTaxInfo(text);
+    const formData = await req.formData();
+    const file = formData.get("file") as File;
+    const taxReturnId = formData.get("taxReturnId") as string | null;
 
-    // Save the document information to the database
+    if (!file) {
+      return NextResponse.json(
+        { error: "No file uploaded" },
+        { status: 400 }
+      );
+    }
+
+    if (!SUPPORTED_FILE_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { 
+          error: "Unsupported file type. Please upload a JPEG, PNG, TIFF, or PDF file." 
+        }, { status: 400 });
+    }
+
+    // Process the file and extract metadata
+    const metadata = await extractDocumentMetadata(file);
+
+    // Store file in cloud storage (implementation depends on your storage solution)
+    const fileUrl = await uploadFileToStorage(file);
+
+    // Create document record in database
     const document = await prisma.document.create({
       data: {
         fileName: file.name,
         fileType: file.type,
-        fileUrl: "placeholder_url", // In a real scenario, you'd upload to cloud storage and store the URL
-        userId: session.user.id,
-        ...(taxReturnId ? { taxReturnId } : {}),
-        metadata: {
-          extractedText: text,
-          taxInfo,
-          processedAt: new Date().toISOString(),
-          fileSize: buffer.byteLength,
-          processingStatus: 'completed'
-        },
+        fileUrl,
+        userId: token.id,
+        taxReturnId,
+        metadata: metadata || undefined,
       },
     });
 
-    return NextResponse.json({ 
-      success: true,
-      documentId: document.id, 
-      extractedInfo: taxInfo,
-      text: text.substring(0, 200) + (text.length > 200 ? '...' : ''), // Preview of extracted text
-    });
+    const response: DocumentWithMetadata = {
+      ...document,
+      metadata: metadata || null,
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
-    console.error("Error processing document:", error);
-    return NextResponse.json({ 
-      error: "Failed to process document",
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error("Document upload error:", error);
+    return NextResponse.json(
+      { error: "Error uploading document" },
+      { status: 500 }
+    );
   }
+}
+
+// Mock function - replace with your actual file storage implementation
+async function uploadFileToStorage(file: File): Promise<string> {
+  // This is where you would implement your file storage logic
+  // For example, uploading to S3, Google Cloud Storage, etc.
+  return `https://storage.example.com/${file.name}`;
 }
