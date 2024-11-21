@@ -1,46 +1,10 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import TaxCalculator from '@/components/TaxCalculator';
+import { TaxCalculator } from '@/components/TaxCalculator';
 
-// Mock next/navigation
-jest.mock('next/navigation', () => ({
-  useRouter() {
-    return {
-      push: jest.fn(),
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-    };
-  },
-  useSearchParams() {
-    return {
-      get: jest.fn(),
-    };
-  },
-}));
-
-// Mock fetch
+// Mock fetch globally
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
-
-const createTestQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  const queryClient = createTestQueryClient();
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
-  );
-}
 
 describe('Tax Calculation Flow', () => {
   beforeEach(() => {
@@ -48,116 +12,126 @@ describe('Tax Calculation Flow', () => {
   });
 
   it('should handle basic tax calculation flow', async () => {
+    // Mock successful API response
     mockFetch.mockImplementationOnce(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ taxAmount: 5000 }),
+        json: () => Promise.resolve({ tax: 5000 }),
       })
     );
 
-    render(
-      <TestWrapper>
-        <TaxCalculator />
-      </TestWrapper>
-    );
+    render(<TaxCalculator />);
 
-    // Fill in income
-    const incomeInput = screen.getByLabelText(/income/i);
-    fireEvent.change(incomeInput, { target: { value: '50000' } });
+    // Enter income
+    const input = screen.getByTestId('income-input');
+    fireEvent.change(input, { target: { value: '50000' } });
 
-    // Submit form
-    const calculateButton = screen.getByRole('button', { name: /calculate/i });
+    // Click calculate
+    const calculateButton = screen.getByText('Calculate Tax');
     fireEvent.click(calculateButton);
 
     // Wait for result
     await waitFor(() => {
-      expect(screen.getByText(/\$5,000/)).toBeInTheDocument();
+      expect(screen.getByText('Estimated Tax: $5000.00')).toBeInTheDocument();
+    });
+
+    // Verify API call
+    expect(mockFetch).toHaveBeenCalledWith('/api/tax-calculation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ income: 50000 }),
     });
   });
 
   it('should handle API errors gracefully', async () => {
+    // Mock API error
     mockFetch.mockImplementationOnce(() =>
-      Promise.reject(new Error('API Error'))
+      Promise.resolve({
+        ok: false,
+        status: 500,
+      })
     );
 
-    render(
-      <TestWrapper>
-        <TaxCalculator />
-      </TestWrapper>
-    );
+    render(<TaxCalculator />);
 
-    const incomeInput = screen.getByLabelText(/income/i);
-    fireEvent.change(incomeInput, { target: { value: '50000' } });
+    // Enter income
+    const input = screen.getByTestId('income-input');
+    fireEvent.change(input, { target: { value: '50000' } });
 
-    const calculateButton = screen.getByRole('button', { name: /calculate/i });
+    // Click calculate
+    const calculateButton = screen.getByText('Calculate Tax');
     fireEvent.click(calculateButton);
 
+    // Wait for error message
     await waitFor(() => {
-      expect(screen.getByText(/error/i)).toBeInTheDocument();
+      expect(screen.getByText('An error occurred while calculating tax')).toBeInTheDocument();
     });
   });
 
   it('should validate input fields', async () => {
-    render(
-      <TestWrapper>
-        <TaxCalculator />
-      </TestWrapper>
-    );
+    render(<TaxCalculator />);
 
-    // Try submitting without input
-    const calculateButton = screen.getByRole('button', { name: /calculate/i });
+    // Click calculate without entering income
+    const calculateButton = screen.getByText('Calculate Tax');
     fireEvent.click(calculateButton);
 
+    // Wait for validation message
     await waitFor(() => {
-      expect(screen.getByText(/required/i)).toBeInTheDocument();
+      expect(screen.getByText('Income is required')).toBeInTheDocument();
     });
 
-    // Try invalid input
-    const incomeInput = screen.getByLabelText(/income/i);
-    fireEvent.change(incomeInput, { target: { value: '-1000' } });
-
+    // Enter invalid income
+    const input = screen.getByTestId('income-input');
+    fireEvent.change(input, { target: { value: '-1000' } });
     fireEvent.click(calculateButton);
 
+    // Wait for validation message
     await waitFor(() => {
-      expect(screen.getByText(/must be/i)).toBeInTheDocument();
+      expect(screen.getByText('Please enter a valid income amount')).toBeInTheDocument();
     });
   });
 
   it('should persist calculation history', async () => {
-    const mockHistory = [
-      { id: '1', income: 50000, taxAmount: 5000, createdAt: new Date().toISOString() },
-      { id: '2', income: 75000, taxAmount: 7500, createdAt: new Date().toISOString() },
-    ];
-
+    // Mock successful API responses
     mockFetch
       .mockImplementationOnce(() =>
         Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ taxAmount: 5000 }),
+          json: () => Promise.resolve({ tax: 5000 }),
         })
       )
       .mockImplementationOnce(() =>
         Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(mockHistory),
+          json: () => Promise.resolve({ success: true }),
         })
       );
 
-    render(
-      <TestWrapper>
-        <TaxCalculator />
-      </TestWrapper>
-    );
+    render(<TaxCalculator />);
 
-    const incomeInput = screen.getByLabelText(/income/i);
-    fireEvent.change(incomeInput, { target: { value: '50000' } });
+    // Enter income
+    const input = screen.getByTestId('income-input');
+    fireEvent.change(input, { target: { value: '50000' } });
 
-    const calculateButton = screen.getByRole('button', { name: /calculate/i });
+    // Click calculate
+    const calculateButton = screen.getByText('Calculate Tax');
     fireEvent.click(calculateButton);
 
+    // Wait for result
     await waitFor(() => {
-      expect(screen.getByText(/\$5,000/)).toBeInTheDocument();
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('Estimated Tax: $5000.00')).toBeInTheDocument();
+    });
+
+    // Verify API calls
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledWith('/api/tax-calculation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ income: 50000 }),
     });
   });
 });

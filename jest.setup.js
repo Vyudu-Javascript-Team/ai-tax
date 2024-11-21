@@ -1,121 +1,112 @@
-// Import necessary testing utilities
 import '@testing-library/jest-dom';
+import { jest } from '@jest/globals';
 import { TextEncoder, TextDecoder } from 'util';
 
-// Mock environment variables
-process.env = {
-  ...process.env,
-  NODE_ENV: 'test',
-  NEXTAUTH_URL: 'http://localhost:3000',
-  DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/ai_tax_prep_test',
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'test_publishable_key',
-  STRIPE_SECRET_KEY: 'test_secret_key',
-  OPENAI_API_KEY: 'test_openai_key',
-  NEXTAUTH_SECRET: 'test_secret',
-  ENCRYPTION_KEY: 'test_encryption_key',
-};
+global.jest = jest;
 
 // Mock TextEncoder/TextDecoder
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
-
-// Mock IntersectionObserver
-const mockIntersectionObserver = jest.fn().mockImplementation(function() {
-  return {
-    observe: jest.fn(),
-    unobserve: jest.fn(),
-    disconnect: jest.fn(),
-  };
-});
-window.IntersectionObserver = mockIntersectionObserver;
-
-// Mock ResizeObserver
-window.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
-
-// Mock fetch
-global.fetch = jest.fn(() => 
-  Promise.resolve({
-    json: () => Promise.resolve({}),
-    ok: true,
-    status: 200,
-    statusText: 'OK',
-  })
-);
+// Mock environment variables
+process.env.NEXTAUTH_URL = 'http://localhost:3000';
+process.env.NEXTAUTH_SECRET = 'test-secret';
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+process.env.STRIPE_SECRET_KEY = 'test_stripe_key';
+process.env.OPENAI_API_KEY = 'test_openai_key';
+process.env.NODE_ENV = 'test';
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
-    refresh: jest.fn(),
-    pathname: '/',
-  }),
-  useSearchParams: () => ({
-    get: jest.fn(),
-    getAll: jest.fn(),
-    has: jest.fn(),
-    forEach: jest.fn(),
-    entries: jest.fn(),
-    values: jest.fn(),
-    keys: jest.fn(),
-    toString: jest.fn(),
-  }),
-  usePathname: () => '/',
+  useRouter() {
+    return {
+      push: jest.fn(),
+      replace: jest.fn(),
+      prefetch: jest.fn(),
+      back: jest.fn(),
+    };
+  },
+  useSearchParams() {
+    return {
+      get: jest.fn(),
+    };
+  },
+  usePathname() {
+    return '';
+  },
 }));
 
 // Mock next-auth
+jest.mock('next-auth/next', () => ({
+  getServerSession: jest.fn(() => ({
+    user: {
+      id: '123',
+      email: 'test@example.com',
+      name: 'Test User',
+    },
+  })),
+}));
+
+// Mock next-auth/react
 jest.mock('next-auth/react', () => ({
   useSession: jest.fn(() => ({
     data: {
       user: {
-        id: 'test-user-id',
+        id: '123',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'USER',
       },
-      expires: '2024-12-31',
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     },
     status: 'authenticated',
   })),
   signIn: jest.fn(),
   signOut: jest.fn(),
-  getSession: jest.fn(),
+  getSession: jest.fn(() => ({
+    user: {
+      id: '123',
+      email: 'test@example.com',
+      name: 'Test User',
+    },
+  })),
 }));
 
-// Mock Stripe
-jest.mock('@stripe/stripe-js', () => ({
-  loadStripe: jest.fn(() => Promise.resolve({})),
-}));
+// Mock fetch
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({}),
+  })
+);
 
-// Extend Jest matchers
-expect.extend({
-  toBeInTheDocument(received) {
-    const pass = received !== null;
-    return {
-      message: () => `expected ${received} to be in the document`,
-      pass,
-    };
-  },
-});
+// Mock console methods to suppress unwanted logs during tests
+const originalError = console.error;
+const originalWarn = console.warn;
+const originalLog = console.log;
+
+console.error = (...args) => {
+  if (
+    args[0]?.includes?.('Warning: ReactDOM.render is no longer supported') ||
+    args[0]?.includes?.('Error: Uncaught [Error: expected]')
+  ) {
+    return;
+  }
+  originalError.call(console, ...args);
+};
+
+console.warn = (...args) => {
+  if (
+    args[0]?.includes?.('Warning: ReactDOM.render is no longer supported') ||
+    args[0]?.includes?.('Warning: An update to')
+  ) {
+    return;
+  }
+  originalWarn.call(console, ...args);
+};
+
+console.log = (...args) => {
+  if (args[0]?.includes?.('Download the React DevTools')) {
+    return;
+  }
+  originalLog.call(console, ...args);
+};

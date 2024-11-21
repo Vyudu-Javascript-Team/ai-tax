@@ -20,12 +20,13 @@ const customJestConfig = {
     '^@types/(.*)$': '<rootDir>/types/$1',
     '\\.(css|less|sass|scss)$': 'identity-obj-proxy',
     '\\.(gif|ttf|eot|svg|png|jpg|jpeg)$': '<rootDir>/__mocks__/fileMock.js',
+    '^jose$': '<rootDir>/__mocks__/jose.js',
   },
   testMatch: [
     '**/__tests__/**/*.test.[jt]s?(x)',
   ],
   collectCoverage: true,
-  coverageDirectory: 'coverage',
+  coverageDirectory: '<rootDir>/coverage',
   coverageReporters: ['json', 'lcov', 'text', 'clover', 'cobertura'],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
@@ -35,31 +36,54 @@ const customJestConfig = {
     '!**/node_modules/**',
     '!**/.next/**',
     '!**/coverage/**',
+    '!**/jest.config.js',
+    '!**/jest.setup.js',
   ],
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
+    },
+  },
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/.next/',
     '<rootDir>/coverage/',
   ],
   transformIgnorePatterns: [
-    '/node_modules/(?!(jose|@panva|oidc-token-hash|openid-client|@tanstack/react-query|@radix-ui|class-variance-authority|next-auth|@stripe)/)',
+    '/node_modules/(?!(jose|@panva|oidc-token-hash|openid-client|@tanstack/react-query|@radix-ui|class-variance-authority|next-auth|@stripe|@babel/runtime|uuid)/)',
   ],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  watchPlugins: [
-    'jest-watch-typeahead/filename',
-    'jest-watch-typeahead/testname',
-  ],
-  reporters: [
-    'default',
-    ['jest-junit', {
-      outputDirectory: '.',
-      outputName: 'junit.xml',
-      classNameTemplate: '{classname}',
-      titleTemplate: '{title}',
-      ancestorSeparator: ' › ',
-      suiteNameTemplate: '{filename}',
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node', 'mjs'],
+  transform: {
+    '^.+\\.(js|jsx|ts|tsx|mjs)$': ['babel-jest', { 
+      presets: [
+        ['@babel/preset-env', { targets: { node: 'current' }, modules: 'commonjs' }],
+        '@babel/preset-react',
+        '@babel/preset-typescript'
+      ],
+      plugins: ['@babel/plugin-transform-modules-commonjs']
     }],
-  ],
+  },
+  extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  globals: {
+    'ts-jest': {
+      useESM: true,
+    },
+    jest: true,
+    expect: true,
+    test: true,
+    describe: true,
+    beforeEach: true,
+    afterEach: true,
+  },
+  moduleDirectories: ['node_modules', '<rootDir>'],
+  setupFiles: ['<rootDir>/jest.setup.js'],
+  testEnvironmentOptions: {
+    url: 'http://localhost:3000',
+  },
+  injectGlobals: true,
 };
 
 module.exports = createJestConfig(customJestConfig);
