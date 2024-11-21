@@ -1,20 +1,35 @@
 import { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, User } from '@prisma/client';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 
 // Create Prisma mock
-export const prismaMock = mockDeep<PrismaClient>() as DeepMockProxy<PrismaClient>;
+export const prismaMock = mockDeep<PrismaClient>();
 
 // Mock user data
-export const mockUser = {
+export const mockUser: Partial<User> = {
   id: 'test-user-id',
   email: 'test@example.com',
-  name: 'Test User',
+  hashedPassword: 'hashed-password',
   firstName: 'Test',
   lastName: 'User',
-  image: null,
-  emailVerified: null,
+  role: 'USER',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  lastLoginAt: null,
+  stripeCustomerId: null,
+  subscriptionStatus: 'TRIAL',
+  subscriptionEndDate: null,
+  trialEndDate: null,
+  twoFactorEnabled: false,
+  totpSecret: null,
+  referralCode: null,
+  referralCount: 0,
+  referralDiscount: 0,
+  referredBy: null,
+  companyName: null,
+  plan: null,
+  tenant: null,
 };
 
 // Mock session data
@@ -39,6 +54,21 @@ export function createMockRequest(method: string, body?: any) {
   }
 
   return request;
+}
+
+// Create a mock file
+export function createMockFile(name: string, type: string, content: string = 'test content'): File {
+  return new File([content], name, { type });
+}
+
+// Create mock FormData
+export function createMockFormData(file: File, additionalData: Record<string, string> = {}): FormData {
+  const formData = new FormData();
+  formData.append('file', file);
+  Object.entries(additionalData).forEach(([key, value]) => {
+    formData.append(key, value);
+  });
+  return formData;
 }
 
 // Mock getToken function
@@ -67,7 +97,18 @@ export function createTestData() {
 
 // Helper to clean up test data
 export async function cleanupTestData() {
-  await prismaMock.$reset();
+  // Clear all mocks
+  jest.clearAllMocks();
+  // Reset Prisma mock state
+  Object.values(prismaMock).forEach(model => {
+    if (typeof model === 'object' && model !== null) {
+      Object.values(model).forEach(method => {
+        if (typeof method === 'function' && method.mockReset) {
+          method.mockReset();
+        }
+      });
+    }
+  });
 }
 
 // Helper to validate error response

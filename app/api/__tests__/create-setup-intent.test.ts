@@ -2,6 +2,7 @@ import { POST } from '../create-setup-intent/route';
 import { prismaMock, createMockRequest, parseJSON, mockSession } from './helpers';
 import Stripe from 'stripe';
 import { jest } from '@jest/globals';
+import { User } from '@prisma/client';
 
 const mockStripeClient = {
   setupIntents: {
@@ -36,10 +37,12 @@ describe('POST /api/create-setup-intent', () => {
 
     mockStripeClient.customers.create.mockResolvedValue(mockCustomer as any);
     mockStripeClient.setupIntents.create.mockResolvedValue(mockSetupIntent as any);
-    prismaMock.user.update.mockResolvedValue({
+
+    const updatedUser: Partial<User> = {
       ...mockSession.user,
       stripeCustomerId: mockCustomer.id,
-    });
+    };
+    prismaMock.user.update.mockResolvedValue(updatedUser as User);
 
     const response = await POST(request);
     const data = await parseJSON(response);
@@ -68,12 +71,12 @@ describe('POST /api/create-setup-intent', () => {
       id: 'seti_123',
     };
 
-    const userWithStripeId = {
+    const userWithStripeId: Partial<User> = {
       ...mockSession.user,
       stripeCustomerId: existingCustomerId,
     };
 
-    prismaMock.user.findUnique.mockResolvedValue(userWithStripeId);
+    prismaMock.user.findUnique.mockResolvedValue(userWithStripeId as User);
     mockStripeClient.setupIntents.create.mockResolvedValue(mockSetupIntent as any);
 
     const response = await POST(request);

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest --verbose",
-    "test:ci": "jest --ci --verbose --runInBand --detectOpenHandles --forceExit --bail",
+    "test:ci": "jest --ci --coverage --verbose --runInBand --detectOpenHandles --forceExit --bail --json --outputFile=junit.xml",
     "test:watch": "jest --watch --verbose",
     "test:coverage": "jest --coverage --verbose",
     "e2e": "cypress run",
