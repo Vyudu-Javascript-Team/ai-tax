@@ -1,19 +1,13 @@
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect } from '@jest/globals';
-
-// Mock component (replace with your actual component)
-const TaxCalculator = () => (
-  <div>
-    <h1>Tax Calculator</h1>
-    <input type="number" placeholder="Enter income" data-testid="income-input" />
-    <button>Calculate Tax</button>
-  </div>
-);
+import '@testing-library/jest-dom';
+import { TaxCalculator } from '@/components/TaxCalculator';
 
 describe('TaxCalculator Component', () => {
   it('renders without crashing', () => {
     render(<TaxCalculator />);
-    expect(screen.getByText('Tax Calculator')).toBeInTheDocument();
+    const heading = screen.getByText('Tax Calculator');
+    expect(heading).toBeInTheDocument();
   });
 
   it('has income input field', () => {

@@ -35,11 +35,12 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock IntersectionObserver
-const mockIntersectionObserver = jest.fn();
-mockIntersectionObserver.mockReturnValue({
-  observe: () => null,
-  unobserve: () => null,
-  disconnect: () => null,
+const mockIntersectionObserver = jest.fn().mockImplementation(function() {
+  return {
+    observe: jest.fn(),
+    unobserve: jest.fn(),
+    disconnect: jest.fn(),
+  };
 });
 window.IntersectionObserver = mockIntersectionObserver;
 
@@ -51,75 +52,56 @@ window.ResizeObserver = jest.fn().mockImplementation(() => ({
 }));
 
 // Mock fetch
-global.fetch = jest.fn(() =>
+global.fetch = jest.fn(() => 
   Promise.resolve({
-    ok: true,
     json: () => Promise.resolve({}),
+    ok: true,
+    status: 200,
+    statusText: 'OK',
   })
 );
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
-  useRouter() {
-    return {
-      push: jest.fn(),
-      replace: jest.fn(),
-      prefetch: jest.fn(),
-      back: jest.fn(),
-      forward: jest.fn(),
-    };
-  },
-  useSearchParams() {
-    return {
-      get: jest.fn(),
-      getAll: jest.fn(),
-      has: jest.fn(),
-      forEach: jest.fn(),
-    };
-  },
-  usePathname() {
-    return '/';
-  },
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    pathname: '/',
+  }),
+  useSearchParams: () => ({
+    get: jest.fn(),
+    getAll: jest.fn(),
+    has: jest.fn(),
+    forEach: jest.fn(),
+    entries: jest.fn(),
+    values: jest.fn(),
+    keys: jest.fn(),
+    toString: jest.fn(),
+  }),
+  usePathname: () => '/',
 }));
 
 // Mock next-auth
 jest.mock('next-auth/react', () => ({
   useSession: jest.fn(() => ({
-    data: null,
-    status: 'unauthenticated',
+    data: {
+      user: {
+        id: 'test-user-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'USER',
+      },
+      expires: '2024-12-31',
+    },
+    status: 'authenticated',
   })),
   signIn: jest.fn(),
   signOut: jest.fn(),
-  getSession: jest.fn(() => null),
-}));
-
-// Mock next-auth/jwt
-jest.mock('next-auth/jwt', () => ({
-  getToken: jest.fn(() => null),
-}));
-
-// Mock next/router
-jest.mock('next/router', () => ({
-  useRouter() {
-    return {
-      route: '/',
-      pathname: '',
-      query: {},
-      asPath: '',
-      push: jest.fn(),
-      replace: jest.fn(),
-      reload: jest.fn(),
-      back: jest.fn(),
-      prefetch: jest.fn(),
-      beforePopState: jest.fn(),
-      events: {
-        on: jest.fn(),
-        off: jest.fn(),
-        emit: jest.fn(),
-      },
-      isFallback: false,
-    };
-  },
+  getSession: jest.fn(),
 }));
 
 // Mock Stripe
@@ -127,15 +109,13 @@ jest.mock('@stripe/stripe-js', () => ({
   loadStripe: jest.fn(() => Promise.resolve({})),
 }));
 
-// Suppress console errors during tests
-const originalError = console.error;
-console.error = (...args) => {
-  if (
-    typeof args[0] === 'string' &&
-    (args[0].includes('Warning: ReactDOM.render is no longer supported') ||
-      args[0].includes('Error: Uncaught [Error: expected `content` prop'))
-  ) {
-    return;
-  }
-  originalError.call(console, ...args);
-};
+// Extend Jest matchers
+expect.extend({
+  toBeInTheDocument(received) {
+    const pass = received !== null;
+    return {
+      message: () => `expected ${received} to be in the document`,
+      pass,
+    };
+  },
+});

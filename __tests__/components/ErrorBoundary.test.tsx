@@ -1,11 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Create a component that throws an error
 const ThrowError = () => {
   throw new Error('Test error');
-  return null;
 };
 
 // Create a component that renders normally
@@ -29,7 +29,8 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText('Normal content')).toBeInTheDocument();
+    const content = screen.getByText('Normal content');
+    expect(content).toBeInTheDocument();
   });
 
   it('renders error message when there is an error', () => {
@@ -39,10 +40,11 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText(/Oops! Something went wrong./)).toBeInTheDocument();
-    expect(
-      screen.getByText(/We're sorry for the inconvenience/)
-    ).toBeInTheDocument();
+    const errorHeading = screen.getByText(/Oops! Something went wrong./);
+    const errorMessage = screen.getByText(/We're sorry for the inconvenience/);
+    
+    expect(errorHeading).toBeInTheDocument();
+    expect(errorMessage).toBeInTheDocument();
   });
 
   it('catches errors in nested components', () => {
@@ -56,7 +58,8 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText(/Oops! Something went wrong./)).toBeInTheDocument();
+    const errorMessage = screen.getByText(/Oops! Something went wrong./);
+    expect(errorMessage).toBeInTheDocument();
   });
 
   it('isolates errors to specific error boundary instances', () => {
@@ -71,7 +74,10 @@ describe('ErrorBoundary', () => {
       </div>
     );
 
-    expect(screen.getByText(/Oops! Something went wrong./)).toBeInTheDocument();
-    expect(screen.getByText('Normal content')).toBeInTheDocument();
+    const errorMessage = screen.getByText(/Oops! Something went wrong./);
+    const normalContent = screen.getByText('Normal content');
+    
+    expect(errorMessage).toBeInTheDocument();
+    expect(normalContent).toBeInTheDocument();
   });
 });

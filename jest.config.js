@@ -24,6 +24,9 @@ const customJestConfig = {
   testMatch: [
     '**/__tests__/**/*.test.[jt]s?(x)',
   ],
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
+  coverageReporters: ['json', 'lcov', 'text', 'clover', 'cobertura'],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',
@@ -49,12 +52,12 @@ const customJestConfig = {
   reporters: [
     'default',
     ['jest-junit', {
-      outputDirectory: 'coverage',
+      outputDirectory: '.',
       outputName: 'junit.xml',
       classNameTemplate: '{classname}',
       titleTemplate: '{title}',
       ancestorSeparator: ' › ',
-      usePathForSuiteName: true,
+      suiteNameTemplate: '{filename}',
     }],
   ],
 };
