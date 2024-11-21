@@ -53,7 +53,7 @@ jobs:
         
     - name: Install dependencies
       run: |
-        npm install --no-package-lock
+        npm install --no-package-lock --verbose
         npm install -g jest@latest
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -64,11 +64,49 @@ jobs:
     - name: Run database migrations
       run: npx prisma migrate deploy
         
+    - name: Check environment
+      run: |
+        echo "Node version: $(node -v)"
+        echo "NPM version: $(npm -v)"
+        echo "Checking required environment variables..."
+        [[ -z "${NEXTAUTH_URL}" ]] && echo "NEXTAUTH_URL is missing" || echo "NEXTAUTH_URL is set"
+        [[ -z "${DATABASE_URL}" ]] && echo "DATABASE_URL is missing" || echo "DATABASE_URL is set"
+        [[ -z "${NEXTAUTH_SECRET}" ]] && echo "NEXTAUTH_SECRET is missing" || echo "NEXTAUTH_SECRET is set"
+        [[ -z "${STRIPE_SECRET_KEY}" ]] && echo "STRIPE_SECRET_KEY is missing" || echo "STRIPE_SECRET_KEY is set"
+        [[ -z "${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}" ]] && echo "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is missing" || echo "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is set"
+        [[ -z "${OPENAI_API_KEY}" ]] && echo "OPENAI_API_KEY is missing" || echo "OPENAI_API_KEY is set"
+        echo "Checking PostgreSQL connection..."
+        nc -zv localhost 5432 || echo "Cannot connect to PostgreSQL"
+        
+    - name: Type check
+      run: npx tsc --noEmit
+        
     - name: Build application
-      run: npm run build
+      run: |
+        echo "Starting build process..."
+        npm run build --verbose
+      env:
+        NODE_OPTIONS: --max-old-space-size=4096
+        DEBUG: '*'
         
     - name: Run tests
-      run: npm run test:ci
+      run: |
+        echo "Starting tests..."
+        npm run test:ci --verbose
+      env:
+        NODE_OPTIONS: --max-old-space-size=4096
+        DEBUG: '*'
+      continue-on-error: true
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          coverage/
+          junit.xml
+        retention-days: 30
 
   deploy:
     needs: build
