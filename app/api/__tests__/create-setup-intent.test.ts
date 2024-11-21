@@ -1,17 +1,20 @@
 import { POST } from '../create-setup-intent/route';
 import { prismaMock, createMockRequest, parseJSON, mockSession } from './helpers';
 import Stripe from 'stripe';
+import { jest } from '@jest/globals';
 
-// Mock Stripe
+const mockStripeClient = {
+  setupIntents: {
+    create: jest.fn(),
+  },
+  customers: {
+    create: jest.fn(),
+  },
+} as unknown as jest.Mocked<Stripe>;
+
+// Mock Stripe constructor
 jest.mock('stripe', () => {
-  return jest.fn().mockImplementation(() => ({
-    setupIntents: {
-      create: jest.fn(),
-    },
-    customers: {
-      create: jest.fn(),
-    },
-  }));
+  return jest.fn().mockImplementation(() => mockStripeClient);
 });
 
 jest.mock('next-auth', () => ({
@@ -19,13 +22,8 @@ jest.mock('next-auth', () => ({
 }));
 
 describe('POST /api/create-setup-intent', () => {
-  let stripe: jest.Mocked<Stripe>;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    stripe = new (Stripe as jest.MockedClass<typeof Stripe>)('fake-key', {
-      apiVersion: '2023-10-16',
-    });
   });
 
   it('should create setup intent for new customer', async () => {
@@ -36,8 +34,8 @@ describe('POST /api/create-setup-intent', () => {
       id: 'seti_123',
     };
 
-    stripe.customers.create.mockResolvedValue(mockCustomer);
-    stripe.setupIntents.create.mockResolvedValue(mockSetupIntent);
+    mockStripeClient.customers.create.mockResolvedValue(mockCustomer as any);
+    mockStripeClient.setupIntents.create.mockResolvedValue(mockSetupIntent as any);
     prismaMock.user.update.mockResolvedValue({
       ...mockSession.user,
       stripeCustomerId: mockCustomer.id,
@@ -48,11 +46,11 @@ describe('POST /api/create-setup-intent', () => {
 
     expect(response.status).toBe(200);
     expect(data.clientSecret).toBe(mockSetupIntent.client_secret);
-    expect(stripe.customers.create).toHaveBeenCalledWith({
+    expect(mockStripeClient.customers.create).toHaveBeenCalledWith({
       email: mockSession.user.email,
       name: `${mockSession.user.firstName} ${mockSession.user.lastName}`,
     });
-    expect(stripe.setupIntents.create).toHaveBeenCalledWith({
+    expect(mockStripeClient.setupIntents.create).toHaveBeenCalledWith({
       customer: mockCustomer.id,
       payment_method_types: ['card'],
     });
@@ -76,15 +74,15 @@ describe('POST /api/create-setup-intent', () => {
     };
 
     prismaMock.user.findUnique.mockResolvedValue(userWithStripeId);
-    stripe.setupIntents.create.mockResolvedValue(mockSetupIntent);
+    mockStripeClient.setupIntents.create.mockResolvedValue(mockSetupIntent as any);
 
     const response = await POST(request);
     const data = await parseJSON(response);
 
     expect(response.status).toBe(200);
     expect(data.clientSecret).toBe(mockSetupIntent.client_secret);
-    expect(stripe.customers.create).not.toHaveBeenCalled();
-    expect(stripe.setupIntents.create).toHaveBeenCalledWith({
+    expect(mockStripeClient.customers.create).not.toHaveBeenCalled();
+    expect(mockStripeClient.setupIntents.create).toHaveBeenCalledWith({
       customer: existingCustomerId,
       payment_method_types: ['card'],
     });
@@ -92,7 +90,7 @@ describe('POST /api/create-setup-intent', () => {
 
   it('should handle Stripe API errors', async () => {
     const request = createMockRequest('POST');
-    stripe.customers.create.mockRejectedValue(new Error('Stripe API error'));
+    mockStripeClient.customers.create.mockRejectedValue(new Error('Stripe API error'));
 
     const response = await POST(request);
     const data = await parseJSON(response);
@@ -105,7 +103,7 @@ describe('POST /api/create-setup-intent', () => {
     const request = createMockRequest('POST');
     const mockCustomer = { id: 'cus_123' };
 
-    stripe.customers.create.mockResolvedValue(mockCustomer);
+    mockStripeClient.customers.create.mockResolvedValue(mockCustomer as any);
     prismaMock.user.update.mockRejectedValue(new Error('Database error'));
 
     const response = await POST(request);
@@ -128,7 +126,7 @@ describe('POST /api/create-setup-intent', () => {
 
   it('should handle invalid customer creation response', async () => {
     const request = createMockRequest('POST');
-    stripe.customers.create.mockResolvedValue(null as any);
+    mockStripeClient.customers.create.mockResolvedValue(null as any);
 
     const response = await POST(request);
     const data = await parseJSON(response);

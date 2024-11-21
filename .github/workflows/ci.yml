@@ -10,11 +10,11 @@ env:
   NODE_ENV: test
   NEXTAUTH_URL: http://localhost:3000
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ai_tax_prep_test
-  NEXTAUTH_SECRET: test-secret
-  STRIPE_SECRET_KEY: sk_test_dummy
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_dummy
-  OPENAI_API_KEY: sk-test-dummy
-  ENCRYPTION_KEY: test-encryption-key
+  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+  STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
 
 jobs:
   build:
@@ -34,6 +34,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --health-start-period 20s
 
     steps:
     - uses: actions/checkout@v4
@@ -77,6 +78,7 @@ jobs:
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4
+      if: ${{ secrets.CODECOV_TOKEN != '' }}
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
@@ -93,11 +95,13 @@ jobs:
           coverage/**/*
           junit.xml
         if-no-files-found: warn
+        retention-days: 14
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
 
     steps:
     - uses: actions/checkout@v4
@@ -110,6 +114,8 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         
     - name: Build
       run: npm run build
@@ -117,3 +123,11 @@ jobs:
         NODE_OPTIONS: --max-old-space-size=4096
 
     # Add your deployment steps here
+    # Example for Vercel deployment:
+    # - name: Deploy to Vercel
+    #   uses: amondnet/vercel-action@v20
+    #   with:
+    #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+    #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+    #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+    #     vercel-args: '--prod'
