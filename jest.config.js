@@ -13,6 +13,9 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
     '^@components/(.*)$': '<rootDir>/components/$1',
     '^@lib/(.*)$': '<rootDir>/lib/$1',
+    '^@radix-ui/(.*)$': '<rootDir>/node_modules/@radix-ui/$1',
+    '^class-variance-authority$': '<rootDir>/node_modules/class-variance-authority/dist/index.js',
+    '^next-auth(.*)$': '<rootDir>/node_modules/next-auth$1',
   },
   testMatch: [
     '**/__tests__/**/*.test.[jt]s?(x)',
@@ -29,8 +32,7 @@ const customJestConfig = {
     '<rootDir>/.next/',
   ],
   transformIgnorePatterns: [
-    '/node_modules/',
-    '^.+\\.module\\.(css|sass|scss)$',
+    '/node_modules/(?!(jose|@panva|oidc-token-hash|openid-client|@tanstack/react-query|@radix-ui|class-variance-authority|next-auth)/)',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 };

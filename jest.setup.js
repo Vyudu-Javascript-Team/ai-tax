@@ -76,5 +76,29 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }));
 
+// Mock fetch
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({}),
+  })
+);
+
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter() {
+    return {
+      push: jest.fn(),
+      replace: jest.fn(),
+      prefetch: jest.fn(),
+    };
+  },
+  useSearchParams() {
+    return {
+      get: jest.fn(),
+    };
+  },
+}));
+
 // Suppress console errors during tests
 console.error = jest.fn();
