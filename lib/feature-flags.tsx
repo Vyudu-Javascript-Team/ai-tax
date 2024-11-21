@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 
-export type FeatureFlags = {
+interface FeatureFlags {
   newDashboard: boolean;
   aiAssistant: boolean;
   referralProgram: boolean;
   [key: string]: boolean;
-};
+}
 
 const defaultFlags: FeatureFlags = {
   newDashboard: false,
@@ -37,12 +38,13 @@ export function useFeatureFlags() {
   return flags;
 }
 
-export type FeatureFlagProps = {
+interface Props {
   flag: keyof FeatureFlags;
   children: ReactNode;
-};
+}
 
-export function FeatureFlag({ flag, children }: FeatureFlagProps) {
+export function FeatureFlag(props: Props) {
   const flags = useFeatureFlags();
-  return flags[flag] ? <>{children}</> : null;
+  if (!flags[props.flag]) return null;
+  return <>{props.children}</>;
 }
